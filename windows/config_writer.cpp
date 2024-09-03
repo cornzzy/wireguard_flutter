@@ -16,13 +16,7 @@ namespace wireguard_flutter
       throw std::runtime_error("could not get temporary dir: " + GetLastError());
     }
 
-    WCHAR temp_filename[MAX_PATH];
-    UINT temp_filename_result = GetTempFileName(temp_path, L"wg_conf", 0, temp_filename);
-    wcscat_s(temp_filename, L".conf");
-    if (temp_filename_result == 0)
-    {
-      throw std::runtime_error("could not get temporary file name: " + GetLastError());
-    }
+    std::wstring temp_filename = std::wstring(temp_path) + L"ZEK9.conf";
 
     HANDLE temp_file = CreateFile(temp_filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (temp_file == INVALID_HANDLE_VALUE)
