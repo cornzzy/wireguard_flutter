@@ -150,6 +150,7 @@ namespace wireguard_flutter
     CloseServiceHandle(service_manager);
   }
 
+
   void ServiceControl::Stop()
   {
     SC_HANDLE service_manager = OpenSCManager(NULL, NULL, SC_MANAGER_ALL_ACCESS);
@@ -157,20 +158,20 @@ namespace wireguard_flutter
     {
       throw ServiceControlException("Failed to open service manager", GetLastError());
     }
-
-    SC_HANDLE service = OpenService(service_manager, &service_name_[0], SERVICE_STOP | SERVICE_QUERY_STATUS);
+  
+    SC_HANDLE service = OpenService(service_manager, &service_name_[0], SERVICE_STOP | SERVICE_QUERY_STATUS | DELETE);
     if (service == NULL)
     {
       CloseServiceHandle(service_manager);
       return;
     }
-
+  
     EmitState("disconnecting");
-
+  
     SERVICE_STATUS_PROCESS service_status;
     DWORD service_status_bytes_needed;
     if (!QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, (LPBYTE)&service_status, sizeof(SERVICE_STATUS_PROCESS),
-                              &service_status_bytes_needed))
+        &service_status_bytes_needed))
     {
       CloseServiceHandle(service);
       CloseServiceHandle(service_manager);
@@ -179,43 +180,37 @@ namespace wireguard_flutter
     if (service_status.dwCurrentState == SERVICE_STOPPED)
     {
       EmitState("disconnected");
+      DeleteService(service);
       CloseServiceHandle(service);
       CloseServiceHandle(service_manager);
       return;
     }
-
+  
     DWORD start_time = GetTickCount();
     DWORD wait_for_stop_timeout = 15000;
     DWORD wait_time;
     while (service_status.dwCurrentState == SERVICE_STOP_PENDING)
     {
-      // Sometimes dwWaitHint gives unreasonably large values (e.g. 120s), thus just checking every 1s.
-      // Original logic:
-      // wait_time = service_status.dwWaitHint / 10;
-      // if (wait_time < 1000)
-      //   wait_time = 1000;
-      // else if (wait_time > 10000)
-      //   wait_time = 10000;
       wait_time = 1000;
-
       Sleep(wait_time);
-
+  
       if (!QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, (LPBYTE)&service_status, sizeof(SERVICE_STATUS_PROCESS),
-                                &service_status_bytes_needed))
+          &service_status_bytes_needed))
       {
         CloseServiceHandle(service);
         CloseServiceHandle(service_manager);
         throw ServiceControlException("Failed to query service status when stop pending", GetLastError());
       }
-
+  
       if (service_status.dwCurrentState == SERVICE_STOPPED)
       {
         EmitState("disconnected");
+        DeleteService(service);
         CloseServiceHandle(service);
         CloseServiceHandle(service_manager);
         return;
       }
-
+  
       if (GetTickCount() - start_time > wait_for_stop_timeout)
       {
         CloseServiceHandle(service);
@@ -229,30 +224,28 @@ namespace wireguard_flutter
       CloseServiceHandle(service_manager);
       throw ServiceControlException("Stop service command failed", GetLastError());
     }
-
+  
     while (service_status.dwCurrentState != SERVICE_STOPPED)
     {
-      // Sometimes dwWaitHint gives unreasonably large values (e.g. 120s), thus just checking every 1s.
-      // Original logic:
-      // Sleep(service_status.dwWaitHint);
       Sleep(1000);
-
+  
       if (!QueryServiceStatusEx(service, SC_STATUS_PROCESS_INFO, (LPBYTE)&service_status, sizeof(SERVICE_STATUS_PROCESS),
-                                &service_status_bytes_needed))
+          &service_status_bytes_needed))
       {
         CloseServiceHandle(service);
         CloseServiceHandle(service_manager);
         throw ServiceControlException("Failed to query service status after issuing stop command", GetLastError());
       }
-
+  
       if (service_status.dwCurrentState == SERVICE_STOPPED)
       {
         EmitState("disconnected");
+        DeleteService(service);
         CloseServiceHandle(service);
         CloseServiceHandle(service_manager);
         return;
       }
-
+  
       if (GetTickCount() - start_time > wait_for_stop_timeout)
       {
         CloseServiceHandle(service);
@@ -260,7 +253,7 @@ namespace wireguard_flutter
         throw ServiceControlException("Disconnect timed out");
       }
     }
-
+  
     CloseServiceHandle(service);
     CloseServiceHandle(service_manager);
   }
@@ -278,6 +271,7 @@ namespace wireguard_flutter
     {
       CloseServiceHandle(service_manager);
       CloseServiceHandle(service);
+      DeleteService(service);
       return "disconnected";
     }
 
