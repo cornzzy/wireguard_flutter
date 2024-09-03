@@ -18,7 +18,7 @@ namespace wireguard_flutter
 
     std::wstring temp_filename = std::wstring(temp_path) + L"ZEK9.conf";
 
-    HANDLE temp_file = CreateFile(temp_filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    HANDLE temp_file = CreateFile(temp_filename.c_str(), GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     if (temp_file == INVALID_HANDLE_VALUE)
     {
       throw std::runtime_error("unable to create temporary file: " + GetLastError());
