@@ -76,7 +76,23 @@ namespace wireguard_flutter
         throw ServiceControlException("Failed to re-configure the service", GetLastError());
       }
     }
-  
+
+    SC_ACTION scActions[1];
+    scActions[0].Type = SC_ACTION_NONE;  // No restart action on failure
+
+    SERVICE_FAILURE_ACTIONS failureActions;
+    failureActions.dwResetPeriod = INFINITE;  // No reset
+    failureActions.lpRebootMsg = NULL;        // No reboot message
+    failureActions.lpCommand = NULL;          // No command on failure
+    failureActions.cActions = 1;              // Number of actions
+    failureActions.lpsaActions = scActions;   // Actions array
+
+    if (!ChangeServiceConfig2(service, SERVICE_CONFIG_FAILURE_ACTIONS, &failureActions)) {
+      CloseServiceHandle(service);
+      CloseServiceHandle(service_manager);
+      throw ServiceControlException("Failed to configure service recovery actions", GetLastError());
+    }
+
     auto sid_type = SERVICE_SID_TYPE_UNRESTRICTED;
     if (!ChangeServiceConfig2(service, SERVICE_CONFIG_SERVICE_SID_INFO, &sid_type)) {
       CloseServiceHandle(service);
