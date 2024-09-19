@@ -204,8 +204,31 @@ class WireguardFlutterPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
         scope.launch(Dispatchers.IO) {
             try {
                 if (futureBackend.await().runningTunnelNames.isEmpty()) {
-                    updateStage("disconnected")
-                    throw Exception("Tunnel is not running")
+                    if (isVpnActive()) {
+                        updateStage("disconnecting")
+                        val minCfgString = """
+                                [Interface]
+                                PrivateKey = ELw6wtwMAttz76dFQB1P30oItDsOBDrjWRvB2R9PmXw=
+                                Address = 10.0.9.9/32
+                                
+                                [Peer]
+                                PublicKey = st7YZK7WEL3CV4kUcskPTBoC0rItrl3Gu6C/t/8FXHE=
+                                Endpoint = 10.0.9.10:10
+                                AllowedIPs = 0.0.0.0/32
+                                """
+                        val inputStream = ByteArrayInputStream(minCfgString.toByteArray())
+                        val minCfg = com.wireguard.config.Config.parse(inputStream)
+                        futureBackend.await().setState(
+                            tunnel(tunnelName) { state ->
+                                scope.launch(Dispatchers.Main) {
+                                    Log.i(TAG, "onStateChange - $state")
+                                }
+                            }, Tunnel.State.UP, minCfg
+                        )
+                    } else {
+                        updateStage("disconnected")
+                        throw Exception("Tunnel is not running")
+                    }
                 }
                 updateStage("disconnecting")
                 futureBackend.await().setState(
