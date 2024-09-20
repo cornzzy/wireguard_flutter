@@ -205,7 +205,6 @@ class WireguardFlutterPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
             try {
                 if (futureBackend.await().runningTunnelNames.isEmpty()) {
                     if (isVpnActive()) {
-                        updateStage("disconnecting")
                         val minCfgString = """
                                 [Interface]
                                 PrivateKey = ELw6wtwMAttz76dFQB1P30oItDsOBDrjWRvB2R9PmXw=
