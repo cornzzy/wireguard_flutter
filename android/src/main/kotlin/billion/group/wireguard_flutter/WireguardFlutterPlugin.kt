@@ -222,6 +222,8 @@ class WireguardFlutterPlugin : FlutterPlugin, MethodCallHandler, ActivityAware,
                             tunnel(tunnelName) { state ->
                                 scope.launch(Dispatchers.Main) {
                                     Log.i(TAG, "onStateChange - $state")
+                                    updateStageFromState(state)
+                                    updateStage("disconnecting")
                                 }
                             }, Tunnel.State.UP, minCfg
                         )
